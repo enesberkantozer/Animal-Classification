@@ -1,20 +1,18 @@
 import sys
 import torch
+import torch.nn.functional as F
 import timm
 from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtGui import QPixmap
 from torchvision import transforms
 from PIL import Image
 
-# 🐾 Sınıf isimlerini kendi dataset klasör isimlerine göre güncelle
 classes = ['antelope', 'badger', 'bat', 'bear', 'bee', 'beetle', 'bison', 'boar', 'butterfly', 'cat', 'caterpillar', 'chimpanzee', 'cockroach', 'cow', 'coyote', 'crab', 'crow', 'deer', 'dog', 'dolphin', 'donkey', 'dragonfly', 'duck', 'eagle', 'elephant', 'flamingo', 'fly', 'fox', 'goat', 'goldfish', 'goose', 'gorilla', 'grasshopper', 'hamster', 'hare', 'hedgehog', 'hippopotamus', 'hornbill', 'horse', 'hummingbird', 'hyena', 'jellyfish', 'kangaroo', 'koala', 'ladybugs', 'leopard', 'lion', 'lizard', 'lobster', 'mosquito', 'moth', 'mouse', 'octopus', 'okapi', 'orangutan', 'otter', 'owl', 'ox', 'oyster', 'panda', 'parrot', 'pelecaniformes', 'penguin', 'pig', 'pigeon', 'porcupine', 'possum', 'raccoon', 'rat', 'reindeer', 'rhinoceros', 'sandpiper', 'seahorse', 'seal', 'shark', 'sheep', 'snake', 'sparrow', 'squid', 'squirrel', 'starfish', 'swan', 'tiger', 'turkey', 'turtle', 'whale', 'wolf', 'wombat', 'woodpecker', 'zebra']  # Örneğin, ImageFolder ile eğitilen klasör adları
 
-# 🔍 Modeli oluştur ve ağırlıkları yükle
 model = timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=len(classes))
 model.load_state_dict(torch.load("src/best_model.pth", map_location=torch.device("cpu")))
 model.eval()
 
-# 🔁 Görüntü transform işlemi (eğitim sırasında kullanılan normalize ile uyumlu)
 transform = transforms.Compose([
     transforms.Resize(256),
     transforms.CenterCrop(224),
@@ -46,21 +44,21 @@ class AnimalDetector(QWidget):
     def select_image(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Fotoğraf Seç", "", "Images (*.png *.jpg *.jpeg)")
         if file_name:
-            # Resmi göster
             self.image_label.setPixmap(QPixmap(file_name))
 
-            # Resmi yükle ve modele ver
             image = Image.open(file_name).convert("RGB")
             input_tensor = transform(image).unsqueeze(0)
 
             with torch.no_grad():
                 output = model(input_tensor)
-                predicted = torch.argmax(output, dim=1).item()
+                probs = F.softmax(output, dim=1)
+                predicted = torch.argmax(probs, dim=1).item()
+                confidence = probs[0, predicted].item() * 100
+
                 prediction = classes[predicted]
 
-            self.label.setText(f"Tahmin: {prediction}")
+            self.label.setText(f"Tahmin: {prediction} — Güven: %{confidence:.2f}")
 
-# Uygulama çalıştır
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = AnimalDetector()
