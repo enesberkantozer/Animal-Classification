@@ -7,10 +7,10 @@ from PyQt5.QtGui import QPixmap
 from torchvision import transforms
 from PIL import Image
 
-classes = ['antelope', 'badger', 'bat', 'bear', 'bee', 'beetle', 'bison', 'boar', 'butterfly', 'cat', 'caterpillar', 'chimpanzee', 'cockroach', 'cow', 'coyote', 'crab', 'crow', 'deer', 'dog', 'dolphin', 'donkey', 'dragonfly', 'duck', 'eagle', 'elephant', 'flamingo', 'fly', 'fox', 'goat', 'goldfish', 'goose', 'gorilla', 'grasshopper', 'hamster', 'hare', 'hedgehog', 'hippopotamus', 'hornbill', 'horse', 'hummingbird', 'hyena', 'jellyfish', 'kangaroo', 'koala', 'ladybugs', 'leopard', 'lion', 'lizard', 'lobster', 'mosquito', 'moth', 'mouse', 'octopus', 'okapi', 'orangutan', 'otter', 'owl', 'ox', 'oyster', 'panda', 'parrot', 'pelecaniformes', 'penguin', 'pig', 'pigeon', 'porcupine', 'possum', 'raccoon', 'rat', 'reindeer', 'rhinoceros', 'sandpiper', 'seahorse', 'seal', 'shark', 'sheep', 'snake', 'sparrow', 'squid', 'squirrel', 'starfish', 'swan', 'tiger', 'turkey', 'turtle', 'whale', 'wolf', 'wombat', 'woodpecker', 'zebra']  # Örneğin, ImageFolder ile eğitilen klasör adları
+classes = ['antelope', 'badger', 'bat', 'bear', 'bee', 'beetle', 'bison', 'boar', 'butterfly', 'cat', 'caterpillar', 'chimpanzee', 'cockroach', 'cow', 'coyote', 'crab', 'crow', 'deer', 'dog', 'dolphin', 'donkey', 'dragonfly', 'duck', 'eagle', 'elephant', 'flamingo', 'fly', 'fox', 'goat', 'goldfish', 'goose', 'gorilla', 'grasshopper', 'hamster', 'hare', 'hedgehog', 'hippopotamus', 'hornbill', 'horse', 'hummingbird', 'hyena', 'jellyfish', 'kangaroo', 'koala', 'ladybugs', 'leopard', 'lion', 'lizard', 'lobster', 'mosquito', 'moth', 'mouse', 'octopus', 'okapi', 'orangutan', 'otter', 'owl', 'ox', 'oyster', 'panda', 'parrot', 'pelecaniformes', 'penguin', 'pig', 'pigeon', 'porcupine', 'possum', 'raccoon', 'rat', 'reindeer', 'rhinoceros', 'sandpiper', 'seahorse', 'seal', 'shark', 'sheep', 'snake', 'sparrow', 'squid', 'squirrel', 'starfish', 'swan', 'tiger', 'turkey', 'turtle', 'whale', 'wolf', 'wombat', 'woodpecker', 'zebra']
 
 model = timm.create_model("vit_base_patch16_224", pretrained=False, num_classes=len(classes))
-model.load_state_dict(torch.load("src/best_model_10.pt", map_location=torch.device("cpu")))
+model.load_state_dict(torch.load("DesktopUI/src/best_model.pt", map_location=torch.device("cpu")))
 model.eval()
 
 transform = transforms.Compose([
@@ -18,7 +18,7 @@ transform = transforms.Compose([
     transforms.CenterCrop(224),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
+                         std=[0.229, 0.224, 0.225]),
 ])
 
 class AnimalDetector(QWidget):
@@ -52,12 +52,21 @@ class AnimalDetector(QWidget):
             with torch.no_grad():
                 output = model(input_tensor)
                 probs = F.softmax(output, dim=1)
-                predicted = torch.argmax(probs, dim=1).item()
-                confidence = probs[0, predicted].item() * 100
 
-                prediction = classes[predicted]
+                top_probs, top_idxs = torch.topk(probs, 2)
+                top_probs = top_probs[0]
+                top_idxs = top_idxs[0]
 
-            self.label.setText(f"Tahmin: {prediction} — Güven: %{confidence:.2f}")
+                prediction1 = classes[top_idxs[0].item()]
+                confidence1 = top_probs[0].item() * 100
+
+                prediction2 = classes[top_idxs[1].item()]
+                confidence2 = top_probs[1].item() * 100
+
+            self.label.setText(
+                f"1. Tahmin: {prediction1} — Güven: %{confidence1:.2f}\n"
+                f"2. Tahmin: {prediction2} — Güven: %{confidence2:.2f}"
+            )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
