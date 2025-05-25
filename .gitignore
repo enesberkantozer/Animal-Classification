@@ -1,2 +1,3 @@
-DesktopUI/src/best_model.pth
+DesktopUI/src/*.pt
+DesktopUI/src/*.pth
 DesktopUI/venv
